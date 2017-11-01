@@ -26,6 +26,8 @@ Adafruit_SSD1306 display(OLED_RESET);
 
 #define MICROS_THRESHOLD 100
 
+#define SCREEN_UPDATE_THRESHOLD_MILIS 500
+
 uint8_t blades = BLADES;
 
 void setup() {
@@ -80,7 +82,7 @@ uint8_t buttonBladesPrevState = HIGH;
 uint8_t buttonBladesState = HIGH;
 
 uint32_t lastScreenUpdate = 0;
-#define SCREEN_UPDATE_THRESHOLD_MILIS 500
+
 
 void loop() {
 
