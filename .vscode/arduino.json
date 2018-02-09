@@ -1,0 +1,7 @@
+{
+    "sketch": "ir_tachometer.ino",
+    "board": "arduino:avr:pro",
+    "configuration": "cpu=16MHzatmega328",
+    "port": "COM9",
+    "output": "../build"
+}
