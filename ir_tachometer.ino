@@ -1,5 +1,4 @@
 //TODO delay at the end of readout cycle has to be dynamic, but probably it is not needed at all
-//TODO Measurement should unlock after there is subsequent number of readouts below threshold, not just one at 0
 //TODO Main loop filtering should filter time derivative not frequency
 
 #include <Adafruit_SSD1306.h>
@@ -33,6 +32,8 @@ Adafruit_SSD1306 display(OLED_RESET);
 #define SCREEN_UPDATE_THRESHOLD_MILIS 500
 
 #define SMOOTH_FACTOR 0.99
+#define LOCK_REMOVE_COUNTER_THRESHOLD 5
+#define LOCK_REMOVE_VALUE_THRESHOLD 1
 
 uint8_t blades = BLADES;
 
@@ -163,11 +164,6 @@ void loop()
   valFiltered = smooth(val, 0.97, valFiltered);
   valFiltered = val;
 
-//  if (valFiltered > 0)
-//  {
-//     Serial.println(valFiltered);
-//   }
-
   if (lockMillis != 0 && lockMillis + LOCK_TIME < millis())
   {
     state = LOW;
@@ -183,13 +179,14 @@ void loop()
   }
 
   static uint8_t locked = false;
+  static uint8_t lockRemoveCounter = 0;
 
   if (locked == false && valFiltered > thresholds[thresholdIndex] && prevVal < thresholds[thresholdIndex])
   {
+    // Lock meausrement until sensor does not reads zero again
     locked = true;
-    // Serial.print(valFiltered);
-    // Serial.print(" ");
-    // Serial.println(prevVal);
+    lockRemoveCounter = 0;
+
     risingMillis = micros();
 
     uint32_t dst = risingMillis - prevRisingMillis;
@@ -215,8 +212,22 @@ void loop()
     delay(2);
   }
 
-  if (locked == true && valFiltered == 0) {
-    locked = false;
+  /*
+   * After raisin threshold has been reached (something passed near sensor) 
+   * device goes into locked state that prevents it from detecting next raisin 
+   * threshold until sensor value did not went close to zero (nothing reflects)
+   * This routine removed lock if near-zero value is recorded for few measurements
+   */ 
+  if (locked == true) {
+    if (valFiltered <= LOCK_REMOVE_VALUE_THRESHOLD) {
+      lockRemoveCounter++;
+    } else {
+      lockRemoveCounter == 0;
+    }
+
+    if (lockRemoveCounter >= LOCK_REMOVE_COUNTER_THRESHOLD) {
+      locked = false;
+    }
   }
 
   prevVal = valFiltered;
