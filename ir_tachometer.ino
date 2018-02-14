@@ -3,8 +3,6 @@
 
 #include <Adafruit_SSD1306.h>
 
-//#define SSD1306_128_64
-
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 
@@ -31,6 +29,7 @@ Adafruit_SSD1306 display(OLED_RESET);
 
 #define SCREEN_UPDATE_THRESHOLD_MILIS 500
 
+#define SENSOR_SMOOTHING_FACTOR 0.97
 #define SMOOTH_FACTOR 0.99
 #define LOCK_REMOVE_COUNTER_THRESHOLD 5
 #define LOCK_REMOVE_VALUE_THRESHOLD 1
@@ -161,8 +160,7 @@ void loop()
   }
 
   val = analogRead(PIN_RECEIVER);
-  valFiltered = smooth(val, 0.97, valFiltered);
-  valFiltered = val;
+  valFiltered = smooth(val, SENSOR_SMOOTHING_FACTOR, valFiltered);
 
   if (lockMillis != 0 && lockMillis + LOCK_TIME < millis())
   {
