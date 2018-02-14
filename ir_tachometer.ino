@@ -190,7 +190,7 @@ void loop()
     uint32_t dst = risingMillis - prevRisingMillis;
 
     freq = 1000000 / dst;
-     Serial.println(freq);
+
     /*
      * We measure only frequencies that are within range
      */
