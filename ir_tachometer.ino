@@ -1,6 +1,3 @@
-//TODO delay at the end of readout cycle has to be dynamic, but probably it is not needed at all
-//TODO Main loop filtering should filter time derivative not frequency
-
 #include <Adafruit_SSD1306.h>
 
 #define OLED_RESET 4
@@ -11,9 +8,6 @@ Adafruit_SSD1306 display(OLED_RESET);
 #define PIN_IR_EMITTER 7
 #define PIN_BLADE_BUTTON 9
 #define PIN_SENS_BUTTON 8
-#define THRESHOLD 90
-#define OFF_TIME 200
-#define ON_TIME 200
 #define LOCK_TIME 500
 
 #define BLADES 2
@@ -23,16 +17,16 @@ Adafruit_SSD1306 display(OLED_RESET);
 #define FREQ_MIN 4
 #define FREQ_MAX 900
 
-#define CATCH_DELAY (1000000/FREQ_MAX)/2 // delay after each run
-
-#define MICROS_THRESHOLD 100
+#define MAX_PEAK_DISTANCE (1000000 / FREQ_MIN)
+#define MIN_PEAK_DISTANCE (1000000 / FREQ_MAX)
 
 #define SCREEN_UPDATE_THRESHOLD_MILIS 500
 
-#define SENSOR_SMOOTHING_FACTOR 0.97
-#define SMOOTH_FACTOR 0.99
-#define LOCK_REMOVE_COUNTER_THRESHOLD 5
-#define LOCK_REMOVE_VALUE_THRESHOLD 1
+#define SENSOR_SMOOTHING_FACTOR 0.95
+#define SMOOTH_FACTOR 0.95
+
+#define LOCK_REMOVE_COUNTER_THRESHOLD 2
+#define LOCK_REMOVE_VALUE_THRESHOLD 4
 
 uint8_t blades = BLADES;
 
@@ -69,7 +63,7 @@ uint32_t risingMillis = 0;
 
 uint32_t cycle = 0;
 
-int smooth(int data, float filterVal, float smoothedVal)
+uint32_t smooth(uint32_t data, float filterVal, float smoothedVal)
 {
 
   if (filterVal > 1)
@@ -83,11 +77,11 @@ int smooth(int data, float filterVal, float smoothedVal)
 
   smoothedVal = (data * (1 - filterVal)) + (smoothedVal * filterVal);
 
-  return (int)smoothedVal;
+  return (uint32_t)smoothedVal;
 }
 
 uint32_t freq;
-uint32_t freqFiltered;
+uint32_t dstFiltered;
 uint32_t rpm;
 
 int val;
@@ -151,7 +145,7 @@ void loop()
     display.println(rpm);
 
     display.print("Freq: ");
-    display.println(freqFiltered);
+    display.println(freq);
 
     display.display();
 
@@ -189,25 +183,19 @@ void loop()
 
     uint32_t dst = risingMillis - prevRisingMillis;
 
-    freq = 1000000 / dst;
-
     /*
      * We measure only frequencies that are within range
      */
-    if (freq > FREQ_MIN && freq < FREQ_MAX && updated == false)
+    if (dst > MIN_PEAK_DISTANCE && dst < MAX_PEAK_DISTANCE && updated == false)
     {
-      freqFiltered = smooth(freq, SMOOTH_FACTOR, freqFiltered);
-      rpm = (freqFiltered * 60) / blades;
+      dstFiltered = smooth(dst, SMOOTH_FACTOR, dstFiltered);
+      freq = 1000000 / dstFiltered;
+      rpm = (freq * 60) / blades;
     }
 
     updated = false;
 
     prevRisingMillis = risingMillis;
-
-//#ifdef CATCH_DELAY
-//    delayMicroseconds(CATCH_DELAY);
-//#endif
-    delay(2);
   }
 
   /*
